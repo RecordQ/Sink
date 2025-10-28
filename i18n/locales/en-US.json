@@ -137,7 +137,8 @@
       "deviceType": "Device Type",
       "os": "OS",
       "browser": "Browser",
-      "browserType": "Browser Type"
+      "browserType": "Browser Type",
+       "ip": "IP Address"
     },
     "time_picker": {
       "today": "Today",
