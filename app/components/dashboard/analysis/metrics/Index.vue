@@ -6,7 +6,7 @@ const tabs = {
   referer: ['referer', 'slug'],
   time: ['language', 'timezone'],
   device: ['device', 'deviceType'],
-  browser: ['os', 'browser', 'browserType'],
+  browser: ['os', 'browser', 'browserType', 'ip'],
 }
 
 const translatedTabs = computed(() => ({
