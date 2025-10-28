@@ -8,6 +8,9 @@ export default eventHandler(async (event) => {
   const { homeURL, linkCacheTtl, redirectWithQuery, caseSensitive } = useRuntimeConfig(event)
   const { cloudflare } = event.context
 
+  // Get IP address from various possible sources
+  const clientIP = getRequestIP(event)
+  
   if (event.path === '/' && homeURL)
     return sendRedirect(event, homeURL)
 
@@ -30,6 +33,8 @@ export default eventHandler(async (event) => {
 
     if (link) {
       event.context.link = link
+      // Add IP address to context for logging
+      event.context.clientIP = clientIP
       try {
         await useAccessLog(event)
       }
@@ -41,3 +46,20 @@ export default eventHandler(async (event) => {
     }
   }
 })
+
+// Helper function to get IP address
+function getRequestIP(event: any): string {
+  // Try to get IP from Cloudflare-specific headers first
+  const cfConnecting = event.headers.get('cf-connecting-ip')
+  if (cfConnecting) return cfConnecting
+
+  // Try X-Forwarded-For header
+  const forwardedFor = event.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    // Get the first IP in the list
+    return forwardedFor.split(',')[0].trim()
+  }
+
+  // Fallback to remote address
+  return event.node.req.socket.remoteAddress || '0.0.0.0'
+}
