@@ -6,6 +6,11 @@
     "binding": "ASSETS",
     "directory": "dist/public"
   },
+"vars": {
+    "NUXT_SITE_TOKEN": "AI@Quantum.com123",
+    "NUXT_CF_ACCOUNT_ID": "932c7193b250430943b0d514beaac7cb",
+    "NUXT_CF_API_TOKEN": "mpXM-0FslwpmG4VKQ9Kp4YmSu9XHo0T09ZeHBtgN",
+  },
   "compatibility_date": "2025-05-08",
   "compatibility_flags": [
     "nodejs_compat"
