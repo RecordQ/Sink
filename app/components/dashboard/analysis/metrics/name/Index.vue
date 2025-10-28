@@ -46,6 +46,10 @@ function formatName(name, type) {
   <TooltipProvider>
     <Tooltip>
       <TooltipTrigger class="w-full text-left">
+        <DashboardAnalysisMetricsNameReferer
+          v-if="name && type === 'referer'"
+          :name="name"
+        />
         <div
           v-else-if="name && type === 'ip'"
           class="w-full truncate flex items-center"
@@ -53,10 +57,6 @@ function formatName(name, type) {
           <Network class="w-4 h-4 mr-2" />
           {{ name }}
         </div>
-        <DashboardAnalysisMetricsNameReferer
-          v-if="name && type === 'referer'"
-          :name="name"
-        />
         <DashboardAnalysisMetricsNameSlug
           v-else-if="name && type === 'slug'"
           :name="name"
