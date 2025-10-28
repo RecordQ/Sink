@@ -1,4 +1,5 @@
 <script setup>
+import { Network } from 'lucide-vue-next'  // Add this import
 defineProps({
   name: {
     type: String,
@@ -45,6 +46,13 @@ function formatName(name, type) {
   <TooltipProvider>
     <Tooltip>
       <TooltipTrigger class="w-full text-left">
+        <div
+          v-else-if="name && type === 'ip'"
+          class="w-full truncate flex items-center"
+        >
+          <Network class="w-4 h-4 mr-2" />
+          {{ name }}
+        </div>
         <DashboardAnalysisMetricsNameReferer
           v-if="name && type === 'referer'"
           :name="name"
