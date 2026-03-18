@@ -71,8 +71,23 @@ async function saveNote() {
     }
   }
 
-  catch (error) {
+  catch (error: any) {
     console.error('Failed to update note:', error)
+
+    // If note not found, refresh the notes list
+    if (error?.status === 404) {
+      await loadNotes()
+      // Clear selected note if it no longer exists
+      if (selectedNote.value && !notes.value.find(n => n.id === selectedNote.value?.id)) {
+        selectedNote.value = notes.value.length > 0
+          ? {
+              ...notes.value[0]!,
+              title: notes.value[0]!.title || '',
+              content: notes.value[0]!.content || '',
+            }
+          : null
+      }
+    }
   }
 }
 
@@ -87,7 +102,13 @@ async function deleteNote(id: string) {
     })
     notes.value = notes.value.filter(n => n.id !== id)
     if (selectedNote.value?.id === id) {
-      selectedNote.value = notes.value.length > 0 ? { ...notes.value[0] } : null
+      selectedNote.value = notes.value.length > 0
+        ? {
+            ...notes.value[0]!,
+            title: notes.value[0]!.title || '',
+            content: notes.value[0]!.content || '',
+          }
+        : null
     }
   }
   catch (error) {
