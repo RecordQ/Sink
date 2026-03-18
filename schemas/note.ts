@@ -9,7 +9,7 @@ export const NoteSchema = z.object({
 })
 
 export const NoteUpdateSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
+  title: z.string().max(200).optional(),
   content: z.string().max(50000).optional(),
 })
 

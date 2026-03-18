@@ -35,10 +35,12 @@ function initThreeJS() {
     canvas: canvasRef.value,
     alpha: false,
     antialias: true,
+    preserveDrawingBuffer: true,
   })
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setPixelRatio(window.devicePixelRatio)
-  renderer.setClearColor(0xFFFFFF, 1)
+  renderer.setClearColor(0xFFFFFF, 1.0)
+  renderer.clear()
 
   // Create galaxy particles
   const particlesGeometry = new THREE.BufferGeometry()
