@@ -15,6 +15,15 @@ export function rateLimit(event: H3Event, config: RateLimitConfig = { windowMs: 
   const now = Date.now()
   const key = `${ip}:${event.path}`
   
+  // Lazy cleanup: remove expired entries
+  if (requestCounts.size > 1000) {
+    for (const [k, record] of requestCounts.entries()) {
+      if (now > record.resetTime) {
+        requestCounts.delete(k)
+      }
+    }
+  }
+  
   const record = requestCounts.get(key)
 
   if (!record || now > record.resetTime) {
@@ -36,13 +45,3 @@ export function rateLimit(event: H3Event, config: RateLimitConfig = { windowMs: 
   record.count++
   return true
 }
-
-// Cleanup old entries periodically
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, record] of requestCounts.entries()) {
-    if (now > record.resetTime) {
-      requestCounts.delete(key)
-    }
-  }
-}, 60000)
