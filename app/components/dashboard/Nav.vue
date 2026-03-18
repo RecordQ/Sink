@@ -15,6 +15,9 @@ const route = useRoute()
         >
           {{ $t('nav.links') }}
         </TabsTrigger>
+        <TabsTrigger value="/dashboard/notes">
+          Notes
+        </TabsTrigger>
         <TabsTrigger value="/dashboard/analysis">
           {{ $t('nav.analysis') }}
         </TabsTrigger>

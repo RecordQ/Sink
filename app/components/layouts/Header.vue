@@ -1,9 +1,8 @@
 <script setup>
 import { Ellipsis, X } from 'lucide-vue-next'
-import { GitHubIcon } from 'vue3-simple-icons'
 
 const showMenu = ref(false)
-const { title, github } = useAppConfig()
+const { title } = useAppConfig()
 </script>
 
 <template>
@@ -19,13 +18,9 @@ const { title, github } = useAppConfig()
             class="flex items-center py-4 space-x-2 text-xl font-black text-gray-900 dark:text-gray-100 md:py-0"
           >
             <span
-              class="flex items-center justify-center w-8 h-8 rounded-full"
+              class="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold"
             >
-              <img
-                src="/sink.png"
-                :alt="title"
-                class="w-full h-full rounded-full"
-              >
+              U
             </span>
             <span class="mx-2">{{ title }}</span>
           </a>
@@ -45,13 +40,9 @@ const { title, github } = useAppConfig()
               class="inline-flex items-center w-auto h-16 px-4 text-xl font-black leading-none text-gray-900 dark:text-gray-100 md:hidden"
             >
               <span
-                class="flex items-center justify-center w-8 h-8 text-white bg-gray-900 rounded-full"
+                class="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold rounded-full"
               >
-                <img
-                  src="/sink.png"
-                  :alt="title"
-                  class="w-full h-full rounded-full"
-                >
+                U
               </span>
               <span class="mx-2">{{ title }}</span>
             </a>
