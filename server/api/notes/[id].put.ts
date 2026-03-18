@@ -1,8 +1,8 @@
-import { NoteSchema } from '@@/schemas/note'
+import { NoteUpdateSchema } from '@@/schemas/note'
 
 export default eventHandler(async (event) => {
   rateLimit(event, { windowMs: 60000, maxRequests: 30 })
-  
+
   const id = getRouterParam(event, 'id')
 
   if (!id) {
@@ -24,13 +24,12 @@ export default eventHandler(async (event) => {
     })
   }
 
-  const noteData = await readValidatedBody(event, NoteSchema.parse)
+  const noteData = await readValidatedBody(event, NoteUpdateSchema.parse)
   const now = new Date().toISOString()
 
   const note = {
     ...existingNote,
-    title: noteData.title,
-    content: noteData.content,
+    ...noteData,
     updatedAt: now,
   }
 

@@ -19,6 +19,7 @@ function initThreeJS() {
 
   // Scene
   scene = new THREE.Scene()
+  scene.background = new THREE.Color(0xFFFFFF)
 
   // Camera
   camera = new THREE.PerspectiveCamera(
