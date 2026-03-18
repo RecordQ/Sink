@@ -1,7 +1,7 @@
 <script setup>
-import { BloggerIcon, GitHubIcon, GmailIcon, MastodonIcon, TelegramIcon, XIcon } from 'vue3-simple-icons'
+import { BloggerIcon, GmailIcon, MastodonIcon, TelegramIcon, XIcon } from 'vue3-simple-icons'
 
-const { title, email, telegram, blog, twitter, mastodon, github } = useAppConfig()
+const { title, email, telegram, blog, twitter, mastodon } = useAppConfig()
 </script>
 
 <template>
@@ -78,19 +78,6 @@ const { title, email, telegram, blog, twitter, mastodon, github } = useAppConfig
         >
           <span class="sr-only">{{ $t('layouts.footer.social.mastodon') }}</span>
           <MastodonIcon
-            class="w-6 h-6"
-          />
-        </a>
-
-        <a
-          v-if="github"
-          :href="github"
-          target="_blank"
-          title="GitHub"
-          class="text-gray-400 hover:text-gray-500"
-        >
-          <span class="sr-only">{{ $t('layouts.footer.social.github') }}</span>
-          <GitHubIcon
             class="w-6 h-6"
           />
         </a>

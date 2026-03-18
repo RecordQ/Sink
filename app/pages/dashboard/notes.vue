@@ -1,23 +1,29 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import type { Note } from '@@/schemas/note'
 
 const notes = ref<Note[]>([])
 const loading = ref(false)
 const selectedNote = ref<Note | null>(null)
-const isEditing = ref(false)
-const isCreating = ref(false)
+const searchQuery = ref('')
 
-const newNote = ref({
-  title: '',
-  content: '',
+const filteredNotes = computed(() => {
+  if (!searchQuery.value) return notes.value
+  const query = searchQuery.value.toLowerCase()
+  return notes.value.filter(note => 
+    note.title.toLowerCase().includes(query) || 
+    note.content.toLowerCase().includes(query)
+  )
 })
 
 const loadNotes = async () => {
   loading.value = true
   try {
-    const response = await $fetch('/api/notes/list')
+    const response = await useAPI('/api/notes/list')
     notes.value = response.notes || []
+    if (notes.value.length > 0 && !selectedNote.value) {
+      selectedNote.value = { ...notes.value[0] }
+    }
   } catch (error) {
     console.error('Failed to load notes:', error)
   } finally {
@@ -25,27 +31,29 @@ const loadNotes = async () => {
   }
 }
 
-const createNote = async () => {
-  if (!newNote.value.title || !newNote.value.content) return
+const createNewNote = async () => {
+  const newNote = {
+    title: 'New Note',
+    content: '',
+  }
   
   try {
-    const note = await $fetch('/api/notes/create', {
+    const note = await useAPI('/api/notes/create', {
       method: 'POST',
-      body: newNote.value,
+      body: newNote,
     })
     notes.value.unshift(note)
-    newNote.value = { title: '', content: '' }
-    isCreating.value = false
+    selectedNote.value = { ...note }
   } catch (error) {
     console.error('Failed to create note:', error)
   }
 }
 
-const updateNote = async () => {
-  if (!selectedNote.value) return
+const saveNote = async () => {
+  if (!selectedNote.value || !selectedNote.value.id) return
   
   try {
-    const updated = await $fetch(`/api/notes/${selectedNote.value.id}`, {
+    const updated = await useAPI(`/api/notes/${selectedNote.value.id}`, {
       method: 'PUT',
       body: {
         title: selectedNote.value.title,
@@ -56,7 +64,6 @@ const updateNote = async () => {
     if (index !== -1) {
       notes.value[index] = updated
     }
-    isEditing.value = false
   } catch (error) {
     console.error('Failed to update note:', error)
   }
@@ -66,12 +73,12 @@ const deleteNote = async (id: string) => {
   if (!confirm('Are you sure you want to delete this note?')) return
   
   try {
-    await $fetch(`/api/notes/${id}`, {
+    await useAPI(`/api/notes/${id}`, {
       method: 'DELETE',
     })
     notes.value = notes.value.filter(n => n.id !== id)
     if (selectedNote.value?.id === id) {
-      selectedNote.value = null
+      selectedNote.value = notes.value.length > 0 ? { ...notes.value[0] } : null
     }
   } catch (error) {
     console.error('Failed to delete note:', error)
@@ -80,8 +87,20 @@ const deleteNote = async (id: string) => {
 
 const selectNote = (note: Note) => {
   selectedNote.value = { ...note }
-  isEditing.value = false
 }
+
+// Auto-save on content change
+watch(() => selectedNote.value?.content, () => {
+  if (selectedNote.value?.id) {
+    saveNote()
+  }
+}, { debounce: 1000 })
+
+watch(() => selectedNote.value?.title, () => {
+  if (selectedNote.value?.id) {
+    saveNote()
+  }
+}, { debounce: 1000 })
 
 onMounted(() => {
   loadNotes()
@@ -89,158 +108,141 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-background">
-    <!-- Sidebar -->
-    <div class="w-80 border-r border-border bg-card flex flex-col">
-      <div class="p-4 border-b border-border">
-        <h2 class="text-xl font-bold mb-4">Notes</h2>
+  <div class="flex h-screen bg-[#FFFBEF] font-sans">
+    <!-- Notes List -->
+    <div class="w-80 border-r border-[#E5D9C5] bg-white flex flex-col">
+      <!-- Toolbar -->
+      <div class="p-3 border-b border-[#E5D9C5] flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-800">Notes</h2>
         <button
-          @click="isCreating = true"
-          class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+          @click="createNewNote"
+          class="p-2 hover:bg-gray-100 rounded-md transition-colors"
+          title="New Note"
         >
-          + New Note
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
         </button>
       </div>
+
+      <!-- Search -->
+      <div class="p-3 border-b border-[#E5D9C5]">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search"
+          class="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+        />
+      </div>
       
+      <!-- Notes List -->
       <div class="flex-1 overflow-y-auto">
-        <div v-if="loading" class="p-4 text-center text-muted-foreground">
+        <div v-if="loading" class="p-4 text-center text-gray-500 text-sm">
           Loading...
         </div>
-        <div v-else-if="notes.length === 0" class="p-4 text-center text-muted-foreground">
-          No notes yet
+        <div v-else-if="filteredNotes.length === 0" class="p-4 text-center text-gray-500 text-sm">
+          {{ searchQuery ? 'No notes found' : 'No notes yet' }}
         </div>
         <div
-          v-for="note in notes"
+          v-for="note in filteredNotes"
           :key="note.id"
           @click="selectNote(note)"
           :class="[
-            'p-4 border-b border-border cursor-pointer hover:bg-accent transition-colors',
-            selectedNote?.id === note.id ? 'bg-accent' : ''
+            'p-3 border-b border-gray-100 cursor-pointer transition-colors',
+            selectedNote?.id === note.id ? 'bg-yellow-50' : 'hover:bg-gray-50'
           ]"
         >
-          <h3 class="font-semibold truncate">{{ note.title }}</h3>
-          <p class="text-sm text-muted-foreground truncate mt-1">
-            {{ note.content }}
+          <h3 class="font-semibold text-gray-900 truncate text-sm mb-1">
+            {{ note.title || 'Untitled' }}
+          </h3>
+          <p class="text-xs text-gray-500 mb-1">
+            {{ new Date(note.updatedAt || note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
           </p>
-          <p class="text-xs text-muted-foreground mt-2">
-            {{ new Date(note.updatedAt || note.createdAt).toLocaleDateString() }}
+          <p class="text-xs text-gray-600 line-clamp-2">
+            {{ note.content || 'No additional text' }}
           </p>
         </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="p-2 border-t border-[#E5D9C5] text-center text-xs text-gray-500">
+        {{ notes.length }} {{ notes.length === 1 ? 'Note' : 'Notes' }}
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col">
-      <!-- Create Note Modal -->
-      <div v-if="isCreating" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-card p-6 rounded-lg shadow-lg w-full max-w-2xl mx-4">
-          <h3 class="text-xl font-bold mb-4">Create New Note</h3>
-          <input
-            v-model="newNote.title"
-            placeholder="Note title..."
-            class="w-full px-4 py-2 border border-border rounded-md mb-4 bg-background"
-          />
-          <textarea
-            v-model="newNote.content"
-            placeholder="Note content..."
-            rows="10"
-            class="w-full px-4 py-2 border border-border rounded-md mb-4 bg-background resize-none"
-          />
-          <div class="flex gap-2 justify-end">
-            <button
-              @click="isCreating = false"
-              class="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              @click="createNote"
-              class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Create
-            </button>
-          </div>
+    <!-- Editor -->
+    <div v-if="selectedNote" class="flex-1 flex flex-col">
+      <!-- Toolbar -->
+      <div class="px-6 py-3 border-b border-[#E5D9C5] flex items-center justify-between bg-[#FFFBEF]">
+        <div class="text-xs text-gray-600">
+          {{ new Date(selectedNote.updatedAt || selectedNote.createdAt).toLocaleString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          }) }}
         </div>
-      </div>
-
-      <!-- Note Viewer/Editor -->
-      <div v-if="selectedNote" class="flex-1 flex flex-col p-6">
-        <div class="flex justify-between items-start mb-4">
-          <div class="flex-1">
-            <input
-              v-if="isEditing"
-              v-model="selectedNote.title"
-              class="text-3xl font-bold w-full bg-transparent border-b border-border pb-2 mb-4"
-            />
-            <h1 v-else class="text-3xl font-bold mb-2">{{ selectedNote.title }}</h1>
-            <p class="text-sm text-muted-foreground">
-              Last updated: {{ new Date(selectedNote.updatedAt || selectedNote.createdAt).toLocaleString() }}
-            </p>
-          </div>
-          <div class="flex gap-2">
-            <button
-              v-if="!isEditing"
-              @click="isEditing = true"
-              class="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors"
-            >
-              Edit
-            </button>
-            <button
-              v-if="isEditing"
-              @click="updateNote"
-              class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Save
-            </button>
-            <button
-              v-if="isEditing"
-              @click="isEditing = false; selectNote(notes.find(n => n.id === selectedNote?.id)!)"
-              class="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              @click="deleteNote(selectedNote.id!)"
-              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto">
-          <textarea
-            v-if="isEditing"
-            v-model="selectedNote.content"
-            class="w-full h-full p-4 border border-border rounded-md bg-background resize-none"
-          />
-          <div v-else class="prose dark:prose-invert max-w-none">
-            <p class="whitespace-pre-wrap">{{ selectedNote.content }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else class="flex-1 flex items-center justify-center text-muted-foreground">
-        <div class="text-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="64"
-            height="64"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="mx-auto mb-4 opacity-50"
-          >
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-            <polyline points="14 2 14 8 20 8"/>
+        <button
+          @click="deleteNote(selectedNote.id!)"
+          class="p-2 hover:bg-[#F5ECD7] rounded-md transition-colors text-gray-600 hover:text-red-600"
+          title="Delete Note"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18"/>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
           </svg>
-          <p class="text-lg">Select a note or create a new one</p>
-        </div>
+        </button>
+      </div>
+      
+      <!-- Note Content -->
+      <div class="flex-1 overflow-y-auto px-6 py-6">
+        <input
+          v-model="selectedNote.title"
+          placeholder="Title"
+          class="w-full text-3xl font-bold mb-4 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400"
+        />
+        <textarea
+          v-model="selectedNote.content"
+          placeholder="Start typing..."
+          class="w-full h-full bg-transparent border-none outline-none text-gray-800 text-base leading-relaxed resize-none placeholder-gray-400 font-normal"
+        />
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else class="flex-1 flex items-center justify-center bg-[#FFFBEF]">
+      <div class="text-center">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="80"
+          height="80"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="mx-auto mb-4 text-yellow-600 opacity-50"
+        >
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p class="text-gray-600 text-lg">Select a note or create a new one</p>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
