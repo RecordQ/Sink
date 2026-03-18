@@ -83,30 +83,47 @@ function initThreeJS() {
   particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
+  // Create soft circular texture programmatically
+  const texCanvas = document.createElement('canvas')
+  texCanvas.width = 64
+  texCanvas.height = 64
+  const context = texCanvas.getContext('2d')
+  if (context) {
+    const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32)
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    context.fillStyle = gradient
+    context.fillRect(0, 0, 64, 64)
+  }
+  const particleTexture = new THREE.CanvasTexture(texCanvas)
+
   // Particle material
   const particlesMaterial = new THREE.PointsMaterial({
-    size: 0.15,
+    size: 0.6,
     sizeAttenuation: true,
+    map: particleTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending,
+    opacity: 0.9,
+    blending: THREE.NormalBlending,
+    depthWrite: false,
   })
 
   particles = new THREE.Points(particlesGeometry, particlesMaterial)
+  // Tilt the galaxy so its spiral face is visible
+  particles.rotation.x = 1.2
   scene.add(particles)
 
   // Animation
   const animate = () => {
     animationId = requestAnimationFrame(animate)
 
-    // Rotate galaxy
-    particles.rotation.y += 0.001
-    particles.rotation.x += 0.0005
+    // Spin the galaxy disk steadily
+    particles.rotation.y -= 0.002
 
     // Mouse parallax
-    camera.position.x += (mouseX * 0.05 - camera.position.x) * 0.05
-    camera.position.y += (-mouseY * 0.05 - camera.position.y) * 0.05
+    camera.position.x += (mouseX * 15 - camera.position.x) * 0.05
+    camera.position.y += (-mouseY * 15 - camera.position.y) * 0.05
     camera.lookAt(scene.position)
 
     renderer.render(scene, camera)

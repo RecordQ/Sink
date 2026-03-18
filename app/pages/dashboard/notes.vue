@@ -23,7 +23,14 @@ async function loadNotes() {
     const response = await useAPI('/api/notes/list')
     notes.value = response.notes || []
     if (notes.value.length > 0 && !selectedNote.value) {
-      selectedNote.value = { ...notes.value[0] }
+      const savedId = localStorage.getItem('sink_selected_note')
+      const found = savedId ? notes.value.find((n: Note) => n.id === savedId) : undefined
+      if (found) {
+        selectedNote.value = { ...found }
+      }
+      else {
+        selectedNote.value = { ...notes.value[0] }
+      }
     }
   }
   catch (error) {
@@ -47,6 +54,7 @@ async function createNewNote() {
     })
     notes.value.unshift(note)
     selectedNote.value = { ...note }
+    localStorage.setItem('sink_selected_note', note.id)
   }
   catch (error) {
     console.error('Failed to create note:', error)
@@ -100,15 +108,22 @@ async function deleteNote(id: string) {
     await useAPI(`/api/notes/${id}`, {
       method: 'DELETE',
     })
-    notes.value = notes.value.filter(n => n.id !== id)
+    notes.value = notes.value.filter((n: Note) => n.id !== id)
     if (selectedNote.value?.id === id) {
-      selectedNote.value = notes.value.length > 0
+      const firstNote = notes.value.length > 0 ? notes.value[0] : null
+      selectedNote.value = firstNote
         ? {
-            ...notes.value[0]!,
-            title: notes.value[0]!.title || '',
-            content: notes.value[0]!.content || '',
+            ...firstNote,
+            title: firstNote.title || '',
+            content: firstNote.content || '',
           }
         : null
+      if (firstNote?.id) {
+        localStorage.setItem('sink_selected_note', firstNote.id)
+      }
+      else {
+        localStorage.removeItem('sink_selected_note')
+      }
     }
   }
   catch (error) {
@@ -118,20 +133,24 @@ async function deleteNote(id: string) {
 
 function selectNote(note: Note) {
   selectedNote.value = { ...note }
+  if (note.id) {
+    localStorage.setItem('sink_selected_note', note.id)
+  }
 }
 
 // Auto-save on content change
-watch(() => selectedNote.value?.content, () => {
+let saveTimeout: any = null
+function queueSave() {
   if (selectedNote.value?.id) {
-    saveNote()
+    clearTimeout(saveTimeout)
+    saveTimeout = setTimeout(() => {
+      saveNote()
+    }, 500)
   }
-}, { debounce: 1000 })
+}
 
-watch(() => selectedNote.value?.title, () => {
-  if (selectedNote.value?.id) {
-    saveNote()
-  }
-}, { debounce: 1000 })
+watch(() => selectedNote.value?.content, queueSave)
+watch(() => selectedNote.value?.title, queueSave)
 
 onMounted(() => {
   loadNotes()
