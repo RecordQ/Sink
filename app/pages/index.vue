@@ -70,7 +70,7 @@ function initThreeJS() {
     positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ
 
     // Colorful particles
-    const color = colorPalette[Math.floor(Math.random() * colorPalette.length)]
+    const color = colorPalette[Math.floor(Math.random() * colorPalette.length)]!
     colors[i3] = color.r
     colors[i3 + 1] = color.g
     colors[i3 + 2] = color.b
@@ -150,9 +150,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="relative min-h-screen flex items-center justify-center overflow-hidden bg-white">
+  <main class="relative h-screen w-screen flex items-center justify-center overflow-hidden bg-white">
     <!-- Three.js Canvas -->
-    <canvas ref="canvasRef" class="absolute inset-0 w-full h-full" />
+    <canvas ref="canvasRef" class="fixed inset-0 w-screen h-screen" />
 
     <!-- Main Content -->
     <div class="relative z-10 text-center px-6 max-w-5xl">
