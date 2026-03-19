@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { VisCrosshair, VisTooltip } from '@unovis/vue'
 import type { BulletLegendItemInterface } from '@unovis/ts'
+import type { Component } from 'vue'
 import { omit } from '@unovis/ts'
-import { type Component, createApp } from 'vue'
+import { VisCrosshair, VisTooltip } from '@unovis/vue'
+import { createApp } from 'vue'
 import { ChartTooltip } from '.'
 
 const props = withDefaults(defineProps<{
@@ -17,6 +18,9 @@ const props = withDefaults(defineProps<{
 // Use weakmap to store reference to each datapoint for Tooltip
 const wm = new WeakMap()
 function template(d: any) {
+  if (!d || d[props.index] === undefined || d[props.index] === null)
+    return ''
+
   if (wm.has(d)) {
     return wm.get(d)
   }
@@ -27,7 +31,7 @@ function template(d: any) {
       return { ...legendReference, value }
     }).filter(i => i.name)
     const TooltipComponent = props.customTooltip ?? ChartTooltip
-    createApp(TooltipComponent, { title: d[props.index].toString(), data: omittedData }).mount(componentDiv)
+    createApp(TooltipComponent, { title: d[props.index]?.toString() ?? '', data: omittedData }).mount(componentDiv)
     wm.set(d, componentDiv.innerHTML)
     return componentDiv.innerHTML
   }
