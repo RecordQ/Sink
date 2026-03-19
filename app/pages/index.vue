@@ -5,6 +5,10 @@ import { onMounted, onUnmounted, ref } from 'vue'
 const { title } = useAppConfig()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
+definePageMeta({
+  layout: 'home',
+})
+
 let scene: THREE.Scene
 let camera: THREE.PerspectiveCamera
 let renderer: THREE.WebGLRenderer
@@ -171,9 +175,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="relative h-screen w-screen flex items-center justify-center overflow-hidden bg-white">
+  <main class="relative h-full w-full flex items-center justify-center overflow-hidden bg-white">
     <!-- Three.js Canvas -->
-    <canvas ref="canvasRef" class="fixed inset-0 w-screen h-screen" />
+    <canvas ref="canvasRef" class="fixed inset-0 w-full h-full" />
 
     <!-- Main Content -->
     <div class="relative z-10 text-center px-6 max-w-5xl">
