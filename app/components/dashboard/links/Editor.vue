@@ -48,6 +48,13 @@ const fieldConfig = {
     comment: {
       component: 'textarea',
     },
+    password: {
+      inputProps: {
+        type: 'password',
+        autocomplete: 'off',
+        placeholder: 'Optional password',
+      },
+    },
   },
 }
 
@@ -107,7 +114,7 @@ async function onSubmit(formData) {
   const link = {
     url: formData.url,
     slug: formData.slug,
-    ...(formData.optional || []),
+    ...(formData.optional || {}),
     expiration: formData.optional?.expiration ? date2unix(formData.optional?.expiration, 'end') : undefined,
   }
   const { link: newLink } = await useAPI(isEdit ? '/api/link/edit' : '/api/link/create', {

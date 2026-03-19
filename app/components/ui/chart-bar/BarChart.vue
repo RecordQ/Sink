@@ -1,10 +1,12 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
 import type { BulletLegendItemInterface } from '@unovis/ts'
-import { VisAxis, VisGroupedBar, VisStackedBar, VisXYContainer } from '@unovis/vue'
+import type { Component } from 'vue'
+import type { BaseChartProps } from '@/components/ui/chart'
 import { Axis, GroupedBar, StackedBar } from '@unovis/ts'
-import { type Component, computed, ref } from 'vue'
+import { VisAxis, VisGroupedBar, VisStackedBar, VisXYContainer } from '@unovis/vue'
 import { useMounted } from '@vueuse/core'
-import { type BaseChartProps, ChartCrosshair, ChartLegend, defaultColors } from '@/components/ui/chart'
+import { computed, ref } from 'vue'
+import { ChartCrosshair, ChartLegend, defaultColors } from '@/components/ui/chart'
 import { cn } from '@/utils'
 
 const props = withDefaults(defineProps<BaseChartProps<T> & {
@@ -67,7 +69,7 @@ const selectorsBar = computed(() => props.type === 'grouped' ? GroupedBar.select
       :style="{ height: isMounted ? '100%' : 'auto' }"
       :margin="margin"
     >
-      <ChartCrosshair v-if="showTooltip" :colors="colors" :items="legendItems" :custom-tooltip="customTooltip" :index="index" />
+      <ChartCrosshair v-if="showTooltip && data && data.length > 0" :colors="colors" :items="legendItems" :custom-tooltip="customTooltip" :index="index" />
 
       <VisBarComponent
         :x="(d: Data, i: number) => i"

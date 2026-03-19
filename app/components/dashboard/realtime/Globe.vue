@@ -198,7 +198,17 @@ onMounted(async () => {
     getGlobeJSON(),
     getColosJSON(),
   ])
-  initGlobe()
+  if (width.value > 0) {
+    initGlobe()
+  }
+  else {
+    const unwatch = watch(width, (w) => {
+      if (w > 0) {
+        initGlobe()
+        unwatch()
+      }
+    })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -211,5 +221,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="globeEl" @mousedown="stopRotation" />
+  <div ref="globeEl" class="w-full aspect-square md:aspect-video" @mousedown="stopRotation" />
 </template>

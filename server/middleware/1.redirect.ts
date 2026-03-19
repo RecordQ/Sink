@@ -29,6 +29,11 @@ export default eventHandler(async (event) => {
     }
 
     if (link) {
+      if (link.password) {
+        const targetPath = redirectWithQuery ? withQuery(`/p/${slug}`, getQuery(event)) : `/p/${slug}`
+        return sendRedirect(event, targetPath, +useRuntimeConfig(event).redirectStatusCode)
+      }
+
       event.context.link = link
       try {
         await useAccessLog(event)

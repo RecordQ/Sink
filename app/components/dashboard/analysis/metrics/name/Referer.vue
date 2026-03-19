@@ -15,7 +15,7 @@ defineProps({
       class="w-5 h-5 p-0.5 float-left"
     >
       <AvatarImage
-        :src="`https://unavatar.io/${name}?fallback=false`"
+        :src="`https://unavatar.io/${name}?fallback=https://sink.cool/icon.png`"
         alt="@radix-vue"
         loading="lazy"
       />
