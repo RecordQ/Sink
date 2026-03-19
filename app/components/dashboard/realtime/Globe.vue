@@ -134,28 +134,41 @@ function initGlobe() {
     .ringMaxRadius(3)
     .ringPropagationSpeed(3)
     .onGlobeReady(() => {
-      globe.pointOfView({ lat: currentLocation.value.latitude, lng: currentLocation.value.longitude, altitude: width.value > 768 ? 2 : 3 })
-      globe.controls().autoRotate = true
-      globe.controls().autoRotateSpeed = 0.3
-    })
+      if (currentLocation.value.latitude && currentLocation.value.longitude) {
+        globe.pointOfView({
+          lat: currentLocation.value.latitude,
+          lng: currentLocation.value.longitude,
+          altitude: width.value > 768 ? 2 : 3,
+        })
+      }
 
-  globe.controls().addEventListener('end', debounce(() => {
-    const distance = Math.round(globe.controls().getDistance())
-    let nextAlt = 0.005
-    if (distance <= 300)
-      nextAlt = 0.001
-    else if (distance >= 600)
-      nextAlt = 0.02
-    if (nextAlt !== hexAltitude.value)
-      hexAltitude.value = nextAlt
-  }, 200))
+      const controls = globe.controls()
+      if (controls) {
+        controls.autoRotate = true
+        controls.autoRotateSpeed = 0.3
+
+        controls.addEventListener('end', debounce(() => {
+          const distance = Math.round(controls.getDistance())
+          let nextAlt = 0.005
+          if (distance <= 300)
+            nextAlt = 0.001
+          else if (distance >= 600)
+            nextAlt = 0.02
+          if (nextAlt !== hexAltitude.value)
+            hexAltitude.value = nextAlt
+        }, 200))
+      }
+    })
 
   globalTrafficEvent.on(trafficEvent)
 }
 
 function stopRotation() {
   if (globe) {
-    globe.controls().autoRotate = false
+    const controls = globe.controls()
+    if (controls) {
+      controls.autoRotate = false
+    }
   }
 }
 
