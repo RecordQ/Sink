@@ -1,3 +1,4 @@
+import { hashPassword } from '@@/server/utils/crypto'
 import { withQuery } from 'ufo'
 import { z } from 'zod'
 
@@ -31,7 +32,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Not Found' })
   }
 
-  if (link.password !== password) {
+  if (link.password !== await hashPassword(password)) {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
@@ -44,5 +45,5 @@ export default defineEventHandler(async (event) => {
   }
 
   const target = redirectWithQuery ? withQuery(link.url, query) : link.url
-  return { url: target }
+  return { url: target, isEncrypted: link.isEncrypted }
 })

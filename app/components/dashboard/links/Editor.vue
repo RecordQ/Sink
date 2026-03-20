@@ -1,4 +1,5 @@
 <script setup>
+import { encryptText } from '@@/app/utils/crypto'
 import { LinkSchema, nanoid } from '@@/schemas/link'
 import { toTypedSchema } from '@vee-validate/zod'
 import { Shuffle, Sparkles } from 'lucide-vue-next'
@@ -41,6 +42,9 @@ const EditLinkSchema = LinkSchema.pick({
 })
 
 const fieldConfig = {
+  url: {
+    disabled: isEdit && link.value.url?.startsWith('ENC:'),
+  },
   slug: {
     disabled: isEdit,
   },
@@ -71,7 +75,7 @@ const form = useForm({
   validationSchema: toTypedSchema(EditLinkSchema),
   initialValues: {
     slug: link.value.slug,
-    url: link.value.url,
+    url: (isEdit && link.value.url?.startsWith('ENC:')) ? '🔒 Encrypted URL (Protected)' : link.value.url,
     optional: {
       comment: link.value.comment,
     },
@@ -111,15 +115,28 @@ onMounted(() => {
 })
 
 async function onSubmit(formData) {
-  const link = {
-    url: formData.url,
+  let finalUrl = formData.url
+
+  if (isEdit && link.value.url?.startsWith('ENC:') && finalUrl === '🔒 Encrypted URL (Protected)') {
+    finalUrl = link.value.url
+  }
+
+  if (formData.optional?.password) {
+    if (finalUrl === '🔒 Encrypted URL (Protected)') {
+      finalUrl = link.value.url
+    }
+    finalUrl = await encryptText(finalUrl, formData.optional.password)
+  }
+
+  const linkPayload = {
+    url: finalUrl,
     slug: formData.slug,
     ...(formData.optional || {}),
     expiration: formData.optional?.expiration ? date2unix(formData.optional?.expiration, 'end') : undefined,
   }
   const { link: newLink } = await useAPI(isEdit ? '/api/link/edit' : '/api/link/create', {
     method: isEdit ? 'PUT' : 'POST',
-    body: link,
+    body: linkPayload,
   })
   dialogOpen.value = false
   emit('update:link', newLink, isEdit ? 'edit' : 'create')

@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import { LinkSchema } from '@@/schemas/link'
+import { hashPassword } from '@@/server/utils/crypto'
 
 export default eventHandler(async (event) => {
   const { previewMode } = useRuntimeConfig(event).public
@@ -21,6 +22,7 @@ export default eventHandler(async (event) => {
       id: existingLink.id, // don't update id
       createdAt: existingLink.createdAt, // don't update createdAt
       updatedAt: Math.floor(Date.now() / 1000),
+      password: link.password ? await hashPassword(link.password) : existingLink.password,
     }
     const expiration = getExpiration(event, newLink.expiration)
     await KV.put(`link:${newLink.slug}`, JSON.stringify(newLink), {

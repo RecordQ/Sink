@@ -1,4 +1,5 @@
 <script setup>
+import { decryptText } from '@@/app/utils/crypto'
 import { Lock } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -30,7 +31,18 @@ async function submit() {
     })
 
     if (data && data.url) {
-      window.location.href = data.url
+      if (data.url.startsWith('ENC:')) {
+        const decUrl = await decryptText(data.url, password.value)
+        if (decUrl) {
+          window.location.href = decUrl
+        }
+        else {
+          error.value = 'Failed to decrypt URL internally. The password may be corrupted.'
+        }
+      }
+      else {
+        window.location.href = data.url
+      }
     }
   }
   catch (e) {

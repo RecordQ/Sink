@@ -1,4 +1,5 @@
 import { LinkSchema } from '@@/schemas/link'
+import { hashPassword } from '@@/server/utils/crypto'
 
 defineRouteMeta({
   openAPI: {
@@ -45,6 +46,10 @@ export default eventHandler(async (event) => {
 
   else {
     const expiration = getExpiration(event, link.expiration)
+
+    if (link.password) {
+      link.password = await hashPassword(link.password)
+    }
 
     await KV.put(`link:${link.slug}`, JSON.stringify(link), {
       expiration,

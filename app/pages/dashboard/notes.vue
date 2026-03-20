@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import type { Note } from '@@/schemas/note'
+import { decryptText, encryptText } from '@@/app/utils/crypto'
+
 import { computed, onMounted, ref, watch } from 'vue'
 
-const notes = ref<Note[]>([])
+const notes = ref<any[]>([])
 const loading = ref(false)
-const selectedNote = ref<Note | null>(null)
+const selectedNote = ref<any>(null)
 const searchQuery = ref('')
+
+const masterPassword = ref('')
+const hasMasterPassword = ref(false)
+const inputPassword = ref('')
+const passwordError = ref('')
+
+const promptNotePassword = ref<any>(null)
+const specificPassword = ref('')
+const specificPasswordError = ref('')
 
 const filteredNotes = computed(() => {
   if (!searchQuery.value)
@@ -22,16 +33,13 @@ async function loadNotes() {
   try {
     const response = await useAPI('/api/notes/list')
     notes.value = response.notes || []
-    if (notes.value.length > 0 && !selectedNote.value) {
-      const savedId = localStorage.getItem('sink_selected_note')
-      const found = savedId ? notes.value.find((n: Note) => n.id === savedId) : undefined
-      if (found) {
-        selectedNote.value = { ...found }
-      }
-      else {
-        selectedNote.value = { ...notes.value[0] }
-      }
+
+    // If no notes exist, they can enter any password to init the vault
+    if (!hasMasterPassword.value) {
+      return
     }
+
+    await decryptAllNotes()
   }
   catch (error) {
     console.error('Failed to load notes:', error)
@@ -41,20 +49,104 @@ async function loadNotes() {
   }
 }
 
+async function decryptAllNotes() {
+  for (const note of notes.value) {
+    if (!note.isProtected && note.content && !note._decrypted) {
+      const decTitle = await decryptText(note.title, masterPassword.value)
+      const decContent = await decryptText(note.content, masterPassword.value)
+      if (decTitle !== null && decContent !== null) {
+        note._rawTitle = note.title
+        note._rawContent = note.content
+        note.title = decTitle
+        note.content = decContent
+        note._decrypted = true
+      }
+    }
+    else if (note.isProtected && !note._decrypted) {
+      note._rawTitle = note.title
+      note._rawContent = note.content
+      note.title = '🔒 Protected Note'
+      note.content = 'Click to unlock'
+    }
+  }
+
+  if (notes.value.length > 0 && !selectedNote.value) {
+    const savedId = localStorage.getItem('sink_selected_note')
+    const found = savedId ? notes.value.find((n: any) => n.id === savedId) : undefined
+    if (found) {
+      selectNote(found)
+    }
+    else {
+      selectNote(notes.value[0])
+    }
+  }
+}
+
+async function verifyMasterPassword() {
+  passwordError.value = ''
+  if (!inputPassword.value)
+    return
+
+  const sampleNote = notes.value.find(n => !n.isProtected && n.content)
+  if (sampleNote) {
+    const dec = await decryptText(sampleNote.content, inputPassword.value)
+    if (dec === null) {
+      passwordError.value = 'Incorrect Master Password'
+      return
+    }
+  }
+
+  masterPassword.value = inputPassword.value
+  hasMasterPassword.value = true
+  await decryptAllNotes()
+}
+
+async function unlockSpecificNote() {
+  specificPasswordError.value = ''
+  if (!specificPassword.value || !promptNotePassword.value)
+    return
+
+  const note = promptNotePassword.value
+  const decTitle = await decryptText(note._rawTitle, specificPassword.value)
+  const decContent = await decryptText(note._rawContent, specificPassword.value)
+
+  if (decTitle === null || decContent === null) {
+    specificPasswordError.value = 'Incorrect password'
+    return
+  }
+
+  note.title = decTitle
+  note.content = decContent
+  note._decrypted = true
+  note._password = specificPassword.value
+
+  promptNotePassword.value = null
+  specificPassword.value = ''
+  selectNote(note)
+}
+
 async function createNewNote() {
+  const encTitle = await encryptText('New Note', masterPassword.value)
+  const encContent = await encryptText('', masterPassword.value)
+
   const newNote = {
-    title: 'New Note',
-    content: '',
+    title: encTitle,
+    content: encContent,
+    isProtected: false,
   }
 
   try {
     const note = await useAPI('/api/notes/create', {
       method: 'POST',
       body: newNote,
-    })
+    }) as any
+    note._rawTitle = encTitle
+    note._rawContent = encContent
+    note.title = 'New Note'
+    note.content = ''
+    note._decrypted = true
     notes.value.unshift(note)
-    selectedNote.value = { ...note }
-    localStorage.setItem('sink_selected_note', note.id)
+    selectNote(note)
   }
   catch (error) {
     console.error('Failed to create note:', error)
@@ -66,13 +158,24 @@ async function saveNote() {
     return
 
   try {
+    const pass = selectedNote.value._tempPassword || masterPassword.value
+    const isProtected = !!selectedNote.value._tempPassword
+    const encTitle = await encryptText(selectedNote.value.title || 'Untitled', pass)
+    const encContent = await encryptText(selectedNote.value.content || '', pass)
+
     const updated = await useAPI(`/api/notes/${selectedNote.value.id}`, {
       method: 'PUT',
       body: {
-        title: selectedNote.value.title,
-        content: selectedNote.value.content,
+        title: encTitle,
+        content: encContent,
+        isProtected,
       },
-    })
+    }) as any
+
+    selectedNote.value._rawTitle = encTitle
+    selectedNote.value._rawContent = encContent
+    if (isProtected)
+      selectedNote.value._password = selectedNote.value._tempPassword
     const index = notes.value.findIndex(n => n.id === updated.id)
     if (index !== -1) {
       notes.value[index] = updated
@@ -131,8 +234,12 @@ async function deleteNote(id: string) {
   }
 }
 
-function selectNote(note: Note) {
-  selectedNote.value = { ...note }
+function selectNote(note: any) {
+  if (note.isProtected && !note._decrypted) {
+    promptNotePassword.value = note
+    return
+  }
+  selectedNote.value = { ...note, _tempPassword: note._password || '' }
   if (note.id) {
     localStorage.setItem('sink_selected_note', note.id)
   }
@@ -151,6 +258,7 @@ function queueSave() {
 
 watch(() => selectedNote.value?.content, queueSave)
 watch(() => selectedNote.value?.title, queueSave)
+watch(() => selectedNote.value?._tempPassword, queueSave)
 
 onMounted(() => {
   loadNotes()
@@ -158,9 +266,59 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="space-y-6">
+  <main class="space-y-6 relative">
     <DashboardBreadcrumb title="Notes" />
     <DashboardNav />
+
+    <!-- Master Password Prompt -->
+    <div v-if="!hasMasterPassword && !loading" class="absolute inset-0 z-50 flex items-center justify-center bg-[#FFFBEF]/90 backdrop-blur-sm rounded-lg border border-[#E5D9C5]">
+      <div class="bg-white p-8 rounded-xl shadow-xl border border-gray-100 max-w-sm w-full">
+        <h2 class="text-2xl font-bold mb-2 text-gray-900">
+          Encrypted Vault
+        </h2>
+        <p class="text-gray-600 mb-4 text-sm">
+          Your Master Password is <strong>never stored anywhere</strong>. It is used locally in your browser to encrypt and decrypt notes.
+        </p>
+        <p class="text-gray-500 mb-6 text-xs">
+          If this is your first time, whatever you enter here will become your Master Password for future notes.
+        </p>
+        <form @submit.prevent="verifyMasterPassword">
+          <input v-model="inputPassword" type="password" placeholder="Master Password" class="w-full px-4 py-2 mb-4 border rounded-md focus:ring-2 focus:ring-yellow-400 outline-none" autofocus>
+          <p v-if="passwordError" class="text-red-500 text-sm mb-4">
+            {{ passwordError }}
+          </p>
+          <button type="submit" :disabled="!inputPassword" class="w-full bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white font-semibold py-2 rounded-md transition-colors">
+            Decrypt Vault
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Specific Note Password Prompt -->
+    <div v-if="promptNotePassword" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
+        <h2 class="text-xl font-bold mb-2">
+          Locked Note
+        </h2>
+        <p class="text-sm text-gray-500 mb-6">
+          This specific note requires a custom password.
+        </p>
+        <form @submit.prevent="unlockSpecificNote">
+          <input v-model="specificPassword" type="password" placeholder="Note Password" class="w-full px-4 py-2 mb-4 border rounded-md focus:ring-2 focus:ring-yellow-400 outline-none" autofocus>
+          <p v-if="specificPasswordError" class="text-red-500 text-sm mb-4">
+            {{ specificPasswordError }}
+          </p>
+          <div class="flex gap-2">
+            <button type="button" class="flex-1 py-2 rounded-md border text-gray-600" @click="promptNotePassword = null">
+              Cancel
+            </button>
+            <button type="submit" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-md transition-colors">
+              Unlock
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div class="flex h-[calc(100vh-12rem)] bg-[#FFFBEF] font-sans rounded-lg overflow-hidden border border-[#E5D9C5]">
       <!-- Notes List -->
@@ -230,14 +388,20 @@ onMounted(() => {
       <div v-if="selectedNote" class="flex-1 flex flex-col">
         <!-- Toolbar -->
         <div class="px-6 py-3 border-b border-[#E5D9C5] flex items-center justify-between bg-[#FFFBEF]">
-          <div class="text-xs text-gray-600">
-            {{ new Date(selectedNote.updatedAt || selectedNote.createdAt).toLocaleString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-            }) }}
+          <div class="text-xs text-gray-600 flex items-center gap-4">
+            <span>
+              {{ new Date(selectedNote.updatedAt || selectedNote.createdAt).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              }) }}
+            </span>
+            <div class="flex items-center gap-2 px-2 py-1 bg-white border border-[#E5D9C5] rounded">
+              <span class="text-gray-400">🔒</span>
+              <input v-model="selectedNote._tempPassword" type="password" placeholder="Custom note password (optional)" class="bg-transparent border-none outline-none text-xs w-48 placeholder-gray-400">
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <button
