@@ -176,9 +176,19 @@ async function saveNote() {
     selectedNote.value._rawContent = encContent
     if (isProtected)
       selectedNote.value._password = selectedNote.value._tempPassword
+
     const index = notes.value.findIndex(n => n.id === updated.id)
     if (index !== -1) {
-      notes.value[index] = updated
+      notes.value[index] = {
+        ...updated,
+        title: selectedNote.value.title,
+        content: selectedNote.value.content,
+        _rawTitle: selectedNote.value._rawTitle,
+        _rawContent: selectedNote.value._rawContent,
+        _decrypted: true,
+        _password: selectedNote.value._password,
+        _tempPassword: selectedNote.value._tempPassword,
+      }
     }
   }
 
