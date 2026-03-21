@@ -52,8 +52,22 @@ async function loadNotes() {
 async function decryptAllNotes() {
   for (const note of notes.value) {
     if (!note.isProtected && note.content && !note._decrypted) {
-      const decTitle = await decryptText(note.title, masterPassword.value)
-      const decContent = await decryptText(note.content, masterPassword.value)
+      let decTitle = await decryptText(note.title, masterPassword.value)
+      while (decTitle && decTitle.startsWith('ENC:')) {
+        const attempt = await decryptText(decTitle, masterPassword.value)
+        if (!attempt || attempt === decTitle)
+          break
+        decTitle = attempt
+      }
+
+      let decContent = await decryptText(note.content, masterPassword.value)
+      while (decContent && decContent.startsWith('ENC:')) {
+        const attempt = await decryptText(decContent, masterPassword.value)
+        if (!attempt || attempt === decContent)
+          break
+        decContent = attempt
+      }
+
       if (decTitle !== null && decContent !== null) {
         note._rawTitle = note.title
         note._rawContent = note.content
@@ -107,8 +121,21 @@ async function unlockSpecificNote() {
     return
 
   const note = promptNotePassword.value
-  const decTitle = await decryptText(note._rawTitle, specificPassword.value)
-  const decContent = await decryptText(note._rawContent, specificPassword.value)
+  let decTitle = await decryptText(note._rawTitle, specificPassword.value)
+  while (decTitle && decTitle.startsWith('ENC:')) {
+    const attempt = await decryptText(decTitle, specificPassword.value)
+    if (!attempt || attempt === decTitle)
+      break
+    decTitle = attempt
+  }
+
+  let decContent = await decryptText(note._rawContent, specificPassword.value)
+  while (decContent && decContent.startsWith('ENC:')) {
+    const attempt = await decryptText(decContent, specificPassword.value)
+    if (!attempt || attempt === decContent)
+      break
+    decContent = attempt
+  }
 
   if (decTitle === null || decContent === null) {
     specificPasswordError.value = 'Incorrect password'
